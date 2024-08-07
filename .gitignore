@@ -1,0 +1,51 @@
+# Node modules
+node_modules/
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Environment variables
+.env
+
+# Editor directories and files
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+
+# OS generated files
+.DS_Store
+Thumbs.db
+
+# Dist folder
+dist/
+
+# Temp files
+tmp/
+temp/
+
+# Compiled source
+*.out
+*.class
+*.pyc
+*.pyo
+*.pyd
+*.exe
+*.dll
+*.so
+*.dylib
+*.bc
+
+# Dependency directories
+bower_components/
+jspm_packages/
+
+# Testing
+coverage/
+junit.xml
+test-results.xml
+.nyc_output/
