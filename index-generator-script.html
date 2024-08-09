@@ -1,0 +1,395 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<!--
+IMPORTANTE =>  Este repositorio contiene un script de JavaScript que genera automáticamente un índice de contenido basado en los encabezados `<h2>` y `<h3>` de una página HTML. El script es útil para páginas web con secciones extensas, ya que permite crear un índice interactivo y navegable para mejorar la experiencia del usuario.
+
+El mismo cuenta con una versión con el código limpio (index-generator-script), y otra versión comentada a detalle (index-generator-script-commented), cualquier consulta pueden enviarme un mail, y trataré de responderles a la brevedad. Saludos!
+-->
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Prueba de índice</title>
+    <style>
+        .collapsed {
+            display: none;
+        }
+
+        .mt-content-container #indiceIntegracion {
+            z-index: 1000;
+            display: block;
+            max-width: 20%;
+            max-height: 75vh;
+            overflow: auto;
+            position: fixed;
+            right: 10px;
+            top: 10px;
+            border: 1px solid #ccc;
+        }
+
+        #indiceIntegracion li a {
+            font-weight: 400;
+        }
+
+        #indiceIntegracion ol li::marker {
+            color: var(--primary-blue);
+        }
+
+        li.buscadorLi::before {
+            list-style-type: none !important;
+            display: none !important;
+        }
+
+        .divBotonIndice {
+            position: sticky;
+            top: -10px;
+            padding: 10px 10px 0 10px;
+            margin-left: -10px;
+            background-color: var(--background-light-blue);
+            box-sizing: border-box;
+            min-width: 10em;
+        }
+
+        .divBotonIndice button.mt-toggle {
+            z-index: 1000;
+        }
+
+        .numeracionOl>li:nth-child(2) {
+            counter-reset: item;
+        }
+
+        .numeracionOl>li:nth-child(n+2)::before {
+            content: counter(item) ". ";
+            display: inline-block;
+            margin-right: 5px;
+        }
+
+        .numeracionOl {
+            counter-reset: sectionCounter 0;
+        }
+
+        .numeracionOl>li:not(.buscadorLi) {
+            counter-increment: sectionCounter;
+            list-style-type: none;
+            position: relative;
+        }
+
+        .numeracionOl>li:not(.buscadorLi)::before {
+            content: counter(sectionCounter) "." !important;
+            position: absolute;
+            left: -1.5em;
+        }
+
+        aside#mt-toc-container {
+            display: none !important;
+        }
+
+        .mt-section {
+            padding-bottom: .75em !important;
+            padding-top: 1em !important;
+        }
+
+        .mt-responsive-table {
+            margin-top: 1.5em;
+            margin-bottom: .75em;
+        }
+
+        h4 {
+            margin-bottom: .75em !important;
+            padding: .25em .75em !important;
+        }
+
+        .particularidades {
+            padding-bottom: .75em;
+        }
+
+        li {
+            line-height: 19px !important;
+        }
+
+        .collapse>.EXPAND_COLLAPSE,
+        .collapse>.definitionBox,
+        .collapse>.warningChannels,
+        .collapse>.warningImportant,
+        .collapse>.warningImportantPatologia,
+        .collapse>.warningRegistration {
+            margin-top: 0 !important;
+        }
+
+        #indiceIntegracion ol li::marker {
+            list-style-type: none !important;
+            display: none !important;
+            list-style: none !important;
+        }
+
+        #indiceIntegracion ol li {
+            list-style-type: none !important;
+
+            list-style: none !important;
+        }
+
+        .mt-section .mt-section {
+            border-bottom: none !important;
+        }
+    </style>
+</head>
+
+<body>
+    <!--Reemplazar los h2 por h3, y con todos h3 funciona igual.
+    Eliminar todos los h2 y h3, y funciona igual. En la app para la que fue diseñado, se insertarían solamente las secciones de comentario y buscador-->
+    <section class="mt-content-container">
+        <h2>Definición</h2>
+        <h2>Cobertura</h2>
+        <h3>Ámbito ambulatorio y domiciliario</h3>
+        <h3>Cirugías Traumatológicas</h3>
+        <h3>Cobertura a través de ...</h3>
+        <h3>Reintegro</h3>
+
+        <h2>Topes</h2>
+        <h3>Cobertura a través de ...</h3>
+        <h3>Reintegro</h3>
+        <h2>Procedimiento</h2>
+        <h2>Documentación</h2>
+        <h3>Documentación y canales para efectivizar el reintegro</h3>
+        <div>
+            <h3>Documentación a presentar cuando supera Tope&nbsp;</h3>
+            <h2>Particularidades</h2>
+            <h2>Plantillas</h2>
+            <div>
+                <h2>Pautas de evaluación</h2>
+                <h3>Pautas administrativas</h3>
+            </div>
+
+            <div>
+                <h3>Pautas médicas</h3>
+            </div>
+
+            <div>
+                <h2>P.U.R.G.U.E.</h2>
+            </div>
+        </div>
+    </section>
+</body>
+<script>
+    //********************** PARA QUE FUNCIONE => Ctrl + F => urlAreemplazar, Y PONER LA URL DEL HOME O LA QUE SE CONSIDERE ADECUADA **************************************
+    function generarIndice() {
+        window.addEventListener('load', function () {
+            const contenedorPrincipal = document.querySelector('.mt-content-container');
+            if (!contenedorPrincipal) {
+                //console.error("Error: No se encontro el contenedor principal (.mt-content-container)");
+                return;
+            }
+
+            const index = [];
+            let currentH2 = null;
+            let tocLiH2 = null;
+            let listaHermanosH3 = null;
+
+            const urlActual = window.location.href;
+            //console.log(`URL actual: ${urlActual}`);
+
+            let todosLosEncabezados = contenedorPrincipal.querySelectorAll('h2, h3');
+            if ((todosLosEncabezados.length > 0) && urlActual !== 'urlAreemplazar/') {
+
+                function codificarCaracteresEspeciales(text) {
+                    text = text.replace(/\s*\n\s*/g, '\n');
+                    return text.replace(/á/g, '.C3.A1')
+                        .replace(/Á/g, '.C3.81')
+                        .replace(/é/g, '.C3.A9')
+                        .replace(/É/g, '.C3.89')
+                        .replace(/í/g, '.C3.AD')
+                        .replace(/Í/g, '.C3.8D')
+                        .replace(/ó/g, '.C3.B3')
+                        .replace(/Ó/g, '.C3.93')
+                        .replace(/ú/g, '.C3.BA')
+                        .replace(/Ú/g, '.C3.9A')
+                        .replace(/ñ/g, '.C3.B1')
+                        .replace(/Ñ/g, '.C3.91')
+                        .replace(/¿/g, '.C2.BF')
+                        .replace(/\//g, '.2F')
+                        .replace(/\?/g, '.3F')
+                        .replace(/ /g, '_')
+                        .replace(/\n/g, '.0A____________')
+                        .replace(/&nbsp;/g, '_')
+                        .replace(/,/g, '_')
+                        .replace(/'/g, '.27')
+                        .replace(/"/g, '.22');
+                }
+
+                function establecerIDParaCadaHeader(headers) {
+                    let contador = 0;
+                    headers.forEach((header) => {
+                        let textoCodificado = codificarCaracteresEspeciales(header.textContent.trim());
+                        textoCodificado += `_${contador}`;
+                        contador++;
+                        if (!header.id) {
+                            header.id = textoCodificado;
+                        }
+                        //console.log(`ID asignado a ${header.tagName}: ${header.id}`);
+                    });
+                }
+
+                establecerIDParaCadaHeader(todosLosEncabezados);
+
+                const divTocContenedor = document.createElement('div');
+                divTocContenedor.id = 'indiceIntegracion';
+                divTocContenedor.title = '\u00CDndice';
+                divTocContenedor.className = 'mt-toggle-container indiceIntegracion';
+                //console.log('Contenedor del indice creado:', divTocContenedor);
+                const tocLista = document.createElement('ol');
+                tocLista.className = 'mt-toc-content mt-collapsible-section numeracionOl';
+                divTocContenedor.appendChild(tocLista);
+                //console.log('Lista superior del contenido del indice creada:', tocLista);
+
+                const seccionBuscador = document.querySelector('nav.elm-header-user-nav.elm-nav');
+                if (seccionBuscador) {
+                    const h2Buscador = document.createElement('h2');
+                    h2Buscador.id = 'seccion-buscador';
+                    h2Buscador.textContent = 'Secci\u00F3n buscador';
+                    h2Buscador.style.cssText = 'position: absolute; left: -9999px;';
+                    seccionBuscador.parentNode.insertBefore(h2Buscador, seccionBuscador);
+
+                    const buscadorLi = document.createElement('li');
+                    buscadorLi.className = 'buscadorLi';
+                    buscadorLi.style.marginBottom = '20px';
+                    const buscadorLink = document.createElement('a');
+                    buscadorLink.rel = 'internal';
+                    buscadorLink.textContent = 'Secci\u00F3n buscador';
+                    buscadorLink.href = `#${h2Buscador.id}`;
+                    buscadorLi.appendChild(buscadorLink);
+                    tocLista.appendChild(buscadorLi);
+                    //console.log("Sección buscador añadida al índice");
+                }
+                todosLosEncabezados.forEach((element) => {
+                    if (element.tagName === 'H2') {
+
+                        currentH2 = {
+                            title: element.textContent.trim(),
+                            subtopics: []
+                        };
+                        index.push(currentH2);
+                        tocLiH2 = document.createElement('li');
+                        const tocLinkH2 = document.createElement('a');
+                        tocLinkH2.rel = 'internal';
+                        tocLinkH2.textContent = element.textContent.trim();
+                        tocLinkH2.href = `#${element.id}`;
+                        tocLiH2.appendChild(tocLinkH2);
+                        tocLista.appendChild(tocLiH2);
+
+                        listaHermanosH3 = document.createElement('ol');
+                        listaHermanosH3.classList.add('collapsed');  // De comentar esta linea, vendrían expandidas por defecto
+                        tocLiH2.appendChild(listaHermanosH3);
+
+                    } else if (element.tagName === 'H3' && currentH2) {
+                        currentH2.subtopics.push(element.textContent.trim());
+
+                        const tocLiH3 = document.createElement('li');
+                        const tocLinkH3 = document.createElement('a');
+                        tocLinkH3.rel = 'internal';
+                        tocLinkH3.textContent = element.textContent.trim();
+                        tocLinkH3.href = `#${element.id}`;
+                        tocLiH3.appendChild(tocLinkH3);
+                        listaHermanosH3.appendChild(tocLiH3);
+                        //console.log(`Añadido H3 al índice: ${element.textContent.trim()}`);
+                    }
+
+                    //console.log("El elemento " + element.id + " tiene " + listaHermanosH3.childElementCount + " hijos directos");
+                });
+
+                tocLista.querySelectorAll('li > ol').forEach((olElement) => {
+                    if (olElement.childElementCount > 0) {
+                        const tocLiH2 = olElement.parentElement;
+                        const flechaH2 = document.createElement('img');
+                        flechaH2.classList.add('imgFlechaIndice');
+                        flechaH2.style.marginLeft = "10px";
+                        flechaH2.src = '/@api/deki/files/22/downArrowBlue.png.png';
+                        flechaH2.alt = 'Flecha';
+
+                        tocLiH2.insertBefore(flechaH2, olElement);
+                        //console.log(`Flecha añadida para H2: ${tocLiH2.querySelector('a').textContent.trim()}`);
+
+                        flechaH2.addEventListener('click', function () {
+                            olElement.classList.toggle('collapsed');
+                            flechaH2.src = olElement.classList.contains('collapsed')
+                                ? '/@api/deki/files/22/downArrowBlue.png.png'
+                                : '/@api/deki/files/101/upArrowBlue.png';
+                            //console.log(`Flecha cliqueada. Estado de la lista H3: ${olElement.classList.contains('collapsed') ? 'Colapsada' : 'Expandida'}`);
+                        });
+                    }
+                });
+
+                const seccionComentarios = document.querySelector('.elm-article-feedback');
+                if (seccionComentarios) {
+                    const h2Comentarios = document.createElement('h2');
+                    h2Comentarios.id = 'seccion-comentarios';
+                    h2Comentarios.textContent = 'Secci\u00F3n comentarios';
+                    h2Comentarios.style.cssText = 'position: absolute; left: -9999px;';
+                    seccionComentarios.parentNode.insertBefore(h2Comentarios, seccionComentarios);
+
+                    const comentariosLi = document.createElement('li');
+                    const comentariosLink = document.createElement('a');
+                    comentariosLink.rel = 'internal';
+                    comentariosLink.textContent = 'Dej\u00E1 tu comentario';
+                    comentariosLink.href = `#${h2Comentarios.id}`;
+                    comentariosLi.appendChild(comentariosLink);
+                    tocLista.appendChild(comentariosLi);
+                    //console.log("Sección comentarios añadida al índice");
+                }
+
+                let ajusteDesplazamiento = 0;
+
+                contenedorPrincipal.insertBefore(divTocContenedor, contenedorPrincipal.firstChild);
+                //console.log('Contenedor del índice agregado al documento.');
+
+                tocLista.addEventListener('click', function (event) {
+                    if (event.target.tagName === 'A') {
+                        event.preventDefault();
+                        const enlace = event.target;
+                        const idEncabezado = enlace.getAttribute('href').substring(1);
+                        const encabezadoDestino = document.getElementById(idEncabezado);
+                        if (encabezadoDestino) {
+                            const posicionElemento = encabezadoDestino.getBoundingClientRect().top + window.pageYOffset;
+                            window.scrollTo({
+                                top: posicionElemento - ajusteDesplazamiento,
+                                behavior: 'smooth'
+                            });
+                            //console.log(`Desplazamiento suave a: ${idEncabezado}`);
+                        }
+                    }
+                });
+
+                const divBotonIndice = document.createElement('div');
+                divBotonIndice.className = 'divBotonIndice';
+
+                const botonColapso = document.createElement('button');
+                botonColapso.className = 'mt-toggle mt-summary-toggle ui-button-icon mt-toggle-collapse';
+                botonColapso.type = 'button';
+                botonColapso.textContent = '\u00CDndice';
+
+                divBotonIndice.appendChild(botonColapso);
+                divTocContenedor.insertBefore(divBotonIndice, tocLista);
+
+                botonColapso.addEventListener('click', function () {
+                    divTocContenedor.classList.toggle('collapsed');
+                    tocLista.classList.toggle('collapsed');
+                    botonColapso.className = divTocContenedor.classList.contains('collapsed') ? 'mt-toggle mt-summary-toggle ui-button-icon mt-toggle-expand' : 'mt-toggle mt-summary-toggle ui-button-icon mt-toggle-collapse';
+                    //console.log(`Botón de colapso clicado. Estado: ${divTocContenedor.classList.contains('collapsed') ? 'Expandido' : 'Colapsado'}`);
+                });
+
+                const estaEnUnIframe = window !== window.top;
+
+                if (!estaEnUnIframe) {
+                    document.querySelector('#indiceIntegracion').style.top = '150px';
+                    ajusteDesplazamiento = 120;
+                    //console.log("Ajuste de desplazamiento establecido para iframe");
+                }
+            }
+        });
+    }
+
+    generarIndice();
+
+</script>
+
+</html>

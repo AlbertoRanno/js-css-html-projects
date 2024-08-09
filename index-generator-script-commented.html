@@ -1,0 +1,591 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<!--
+IMPORTANTE =>  Este repositorio contiene un script de JavaScript que genera automáticamente un índice de contenido basado en los encabezados `<h2>` y `<h3>` de una página HTML. El script es útil para páginas web con secciones extensas, ya que permite crear un índice interactivo y navegable para mejorar la experiencia del usuario.
+
+El mismo cuenta con una versión con el código limpio (index-generator-script), y otra versión comentada a detalle (index-generator-script-commented), cualquier consulta pueden enviarme un mail, y trataré de responderles a la brevedad. Saludos!
+-->
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Prueba de índice</title>
+    <!--Para la app que fue diseñado requiere de las siguientes propiedades css, el resto se encuentran en la misma-->
+    <style>
+        /* Al comienzo use el mismo ID que el default para omitir generar todas las propiedades CSS, pero ya lo omití y generé las mismas, que son las siguientes. Ademas, en lugar de replicar el id original, le genere el propio: #indiceIntegracion, por lo que cambie todos los selectores, para usar el ID o la clase */
+        .collapsed {
+            display: none;
+            /* Oculta los LI de los OL internos */
+        }
+
+        /* Valores para ver directo desde la app, se deben corregir con un script en los casos donde se vea desde una integración*/
+        .mt-content-container #indiceIntegracion {
+            z-index: 1000;
+            /*Para que los LI le pasen por debajo al escrolear*/
+            display: block;
+            /*sin esto no se veia el div con el boton cuando se colapsaba - el original lo trae tambien*/
+            max-width: 20%;
+            /*porcentaje de ancho de la pagina*/
+            max-height: 75vh;
+            /*Hace que el contenedor no siga verticalmente mas alla de lo visible*/
+            overflow: auto;
+            /*Genera la barra de desplazamiento cuando son muchos LI*/
+            position: fixed;
+            /*Para que permanezca en la posición correcta dentro de la integracion */
+            right: 10px;
+            /*puede permanece igual en la app que en la integración*/
+            top: 10px;
+            /*debido a las diferentes estructuras htmls, debe cambiar para verse desde la integración*/
+            border: 1px solid #ccc;
+        }
+
+        #indiceIntegracion li a {
+            font-weight: 400;
+            /*Para que los LI no se vean en negrita*/
+        }
+
+        #indiceIntegracion ol li::marker {
+            color: var(--primary-blue);
+            /*Para que los nros de la OL sean del mismo color que los LI, y no del negro que viene por default*/
+        }
+
+        li.buscadorLi::before {
+            list-style-type: none !important;
+            display: none !important;
+        }
+
+        /*Envolví, desde el script, al boton en un DIV. Esto el original no lo trae. Y lo use, para algo que el orginal no hace tampoco, que es que, el div, con su boton interno que permite colapsar todo el indice, permanezca siempre visible, de modo que cuando el indice es extenso, no se tenga que volver a scrolear hacia arriba para buscarlo y colapsarlo*/
+        .divBotonIndice {
+            position: sticky;
+            /*Pegado al contenedor - siempre visible*/
+            top: -10px;
+            /*Desplazo el div hacia arriba, de modo que por encima del div, no se vean los LI que se van escroleando*/
+            padding: 10px 10px 0 10px;
+            margin-left: -10px;
+            /*Lo mismo, para que no se vean los LI escroleados*/
+            background-color: var(--background-light-blue);
+            box-sizing: border-box;
+            min-width: 10em;
+            /*Sin un minimo, la palabra 'indice' se iba debajo del '+' cuando esta colapsado*/
+        }
+
+        .divBotonIndice button.mt-toggle {
+            z-index: 1000;
+        }
+
+        /* Reinicia la numeración en el segundo li. Dado que el primero quiero que no tenga numeración, por ser el que lleva al buscador integrado. */
+        .numeracionOl>li:nth-child(2) {
+            counter-reset: item;
+        }
+
+        .numeracionOl>li:nth-child(n+2)::before {
+            content: counter(item) ". ";
+            display: inline-block;
+            margin-right: 5px;
+        }
+
+        .numeracionOl {
+            counter-reset: sectionCounter 0;
+            /* Comienza el contador desde 0 */
+        }
+
+        /* Aplica numeración solo a los li relevantes, omitiendo el buscador */
+        .numeracionOl>li:not(.buscadorLi) {
+            counter-increment: sectionCounter;
+            list-style-type: none;
+            /* Oculta cualquier estilo de lista predeterminado */
+            position: relative;
+            /* Permite posicionamiento de ::before */
+        }
+
+        .numeracionOl>li:not(.buscadorLi)::before {
+            content: counter(sectionCounter) "." !important;
+            position: absolute;
+            left: -1.5em;
+            /* Ajustar para alinear los números */
+        }
+
+        aside#mt-toc-container {
+            display: none !important;
+        }
+
+        .mt-section {
+            padding-bottom: .75em !important;
+            padding-top: 1em !important;
+        }
+
+        .mt-responsive-table {
+            margin-top: 1.5em;
+            margin-bottom: .75em;
+        }
+
+        h4 {
+            margin-bottom: .75em !important;
+            padding: .25em .75em !important;
+        }
+
+        .particularidades {
+            padding-bottom: .75em;
+        }
+
+        li {
+            line-height: 19px !important;
+        }
+
+        .collapse>.EXPAND_COLLAPSE,
+        .collapse>.definitionBox,
+        .collapse>.warningChannels,
+        .collapse>.warningImportant,
+        .collapse>.warningImportantPatologia,
+        .collapse>.warningRegistration {
+            margin-top: 0 !important;
+        }
+
+        #indiceIntegracion ol li::marker {
+            list-style-type: none !important;
+            display: none !important;
+            list-style: none !important;
+        }
+
+        #indiceIntegracion ol li {
+            list-style-type: none !important;
+
+            list-style: none !important;
+        }
+
+        .mt-section .mt-section {
+            border-bottom: none !important;
+        }
+    </style>
+</head>
+
+<body>
+    <!--Reemplazar los h2 por h3, y con todos h3 funciona igual.
+    Eliminar todos los h2 y h3, y funciona igual. En la app para la que fue diseñado, se insertarían solamente las secciones de comentario y buscador-->
+    <section class="mt-content-container">
+        <h2>Definición</h2>
+        <h2>Cobertura</h2>
+        <h3>Ámbito ambulatorio y domiciliario</h3>
+        <h3>Cirugías Traumatológicas</h3>
+        <h3>Cobertura a través de ...</h3>
+        <h3>Reintegro</h3>
+
+        <h2>Topes</h2>
+        <h3>Cobertura a través de ...</h3>
+        <h3>Reintegro</h3>
+        <h2>Procedimiento</h2>
+        <h2>Documentación</h2>
+        <h3>Documentación y canales para efectivizar el reintegro</h3>
+        <!--La siguiente esctructura, donde los divs son necesarios para los permisos de sección, fue la que ocasionó la última reestructuración del script que genera el índice.
+        Por tener en un div, un mix de headings (h2 y h3). La app lo marcaba como un issue, y la misma generaba error en JS (se insertaban mal los Li de los h3), se generaba mal el html (las section por default del cms no distinguían los finales y comienzos entre ellas), al armar mal el html, el css aplicado se veía mal (por ejemplo, las lineas de final de sección)-->
+        <div>
+            <h3>Documentación a presentar cuando supera Tope&nbsp;</h3>
+            <h2>Particularidades</h2>
+            <h2>Plantillas</h2>
+            <div>
+                <h2>Pautas de evaluación</h2>
+                <h3>Pautas administrativas</h3>
+            </div>
+
+            <div>
+                <h3>Pautas médicas</h3>
+            </div>
+
+            <div>
+                <h2>P.U.R.G.U.E.</h2>
+            </div>
+        </div>
+    </section>
+</body>
+<script>
+    //********************** PARA QUE FUNCIONE => Ctrl + F => urlAreemplazar, Y PONER LA URL DEL HOME O LA QUE SE CONSIDERE ADECUADA **************************************
+
+    //Encapsulo la función por buena práctica, y para no contaminar el espacio de variables
+    function generarIndice() {
+        //el evento 'load' es el que espera que se cargue la página por completo, incluyendo scripts, css e imágenes, esto es necesario porque parte del contenido puede estar generándose por un script..
+        window.addEventListener('load', function () {
+            // Capturo al contenedor principal, el section que es el mas externo que toma la integracion.
+            const contenedorPrincipal = document.querySelector('.mt-content-container');
+            if (!contenedorPrincipal) {
+                console.error("Error: No se encontro el contenedor principal (.mt-content-container)");
+                return;
+            }
+
+            const index = [];
+            let currentH2 = null;
+            let tocLiH2 = null;
+            let listaHermanosH3 = null;
+
+            const urlActual = window.location.href;
+            console.log(`URL actual: ${urlActual}`);
+
+            /* Capturo todos los headings que me interesan, y los manejo por orden de aparición. Manejar los grupos por separados, más el problema de permisos, me trajo un error de inserción que no fui capaz de resolver */
+            let todosLosEncabezados = contenedorPrincipal.querySelectorAll('h2, h3');
+
+            //Evito que se genere el índice en el home, dado que allí también hay headings!
+            //***************** IMPORTANTE => REEMPLAZAR URL *****************
+            if ((todosLosEncabezados.length > 0) && urlActual !== 'urlAreemplazar/') {
+
+                // Función para codificar los caracteres especiales (Explicado al final, de forma general *** SPOILER: El cms hace config especial)
+                function codificarCaracteresEspeciales(text) {
+                    // QueReemplaza por queExpresion
+                    // Eliminar espacios adicionales alrededor de los saltos de línea
+                    text = text.replace(/\s*\n\s*/g, '\n');
+                    return text.replace(/á/g, '.C3.A1') // á por .C3.A1
+                        .replace(/Á/g, '.C3.81') // Á por .C3.81
+                        .replace(/é/g, '.C3.A9') // é por .C3.A9
+                        .replace(/É/g, '.C3.89') // É por .C3.89
+                        .replace(/í/g, '.C3.AD') // í por .C3.AD
+                        .replace(/Í/g, '.C3.8D') // Í por .C3.8D
+                        .replace(/ó/g, '.C3.B3') // ó por .C3.B3
+                        .replace(/Ó/g, '.C3.93') // Ó por .C3.93
+                        .replace(/ú/g, '.C3.BA') // ú por .C3.BA
+                        .replace(/Ú/g, '.C3.9A') // Ú por .C3.9A
+                        .replace(/ñ/g, '.C3.B1') // ñ por .C3.B1
+                        .replace(/Ñ/g, '.C3.91') // Ñ por .C3.91
+                        .replace(/¿/g, '.C2.BF') // ¿ por .C2.BF
+                        .replace(/\//g, '.2F') // / por .2F
+                        .replace(/\?/g, '.3F') // ? por .3F
+                        .replace(/ /g, '_') // espacio por _
+                        .replace(/\n/g, '.0A____________') // salto de línea por .0A____________
+                        .replace(/&nbsp;/g, '_') // &nbsp; por _
+                        .replace(/,/g, '_') // , por _
+                        .replace(/'/g, '.27') // ' por .27
+                        .replace(/"/g, '.22'); // " por .22
+                }
+
+                // Función para asegurar que todos los encabezados tengan un ID único. Ese Id, luego lo usaré para el desplazamiento.
+                function establecerIDParaCadaHeader(headers) {
+                    // Los headers que pase como parámetro de esta funcion, van a ser o los nodeList de H2, o los de H3. Ver *1* y *2*.
+                    //Le sumé el siguiente contador, para hacer que el ID de cada heading, sea efectivamente único. Sino, en el caso dónde en un artículo había dos headings, con exactamente el mismo textContent, se les asociaba un misma Id. Y de clickear en uno u otro Li, erroneamente siempre llevaba al primero de los headings que tuviera este ID. Con el contador, se soluciona esto, dado que con un número incremental que se les añada al final, siempre serán distintos.
+                    let contador = 0;
+                    headers.forEach((header) => {
+                        // Aplico forEach directo en la nodeList
+                        let textoCodificado = codificarCaracteresEspeciales(header.textContent.trim());
+                        /* A cada heading, dentro de la nodeList que esté recorriendo, le quito los espacios en blanco, y lo codifico con la funcion especial para este cms, de modo que sea apto para una URL, y lo pueda utilizar en el href*/
+                        textoCodificado += `_${contador}`;
+                        contador++;
+                        if (!header.id) {
+                            // Si ese header,no tiene aún ID, le asigno el texto codificado a forma válida de URL, como el ID
+                            header.id = textoCodificado;
+                            /* Si tiene ID previo, hardcodeado, o agregado por el cms, se le respeta ese, pero aún así será agregado al índice. IMPORTANTE! Estos IDs de los headings, luego los usaré para redireccionar, con el desplazamiento suave, a la sección de la página, donde se encuentran estos encabezados! (Ver al final donde dice **** IMPORTANTE ****/
+                        }
+                        console.log(`ID asignado a ${header.tagName}: ${header.id}`);
+                    });
+                }
+
+                //Le asigno todos los IDs a c/u de los encabezados, antes de armar el índice. De esta forma es más sencillo asignarles los ID a los href.
+                establecerIDParaCadaHeader(todosLosEncabezados);
+
+                // Creo el contenedor del indice
+                const divTocContenedor = document.createElement('div');
+                divTocContenedor.id = 'indiceIntegracion';
+                /* Aquí usaba el índice default, pero luego pasé al propio. Tenía:
+                divTocContenedor.id = 'mt-toc-container';
+                Mismo que el indice nativo, para que se le aplique el mismo CSS que viene por default, los diferenciaba por el contenedor, en un ambiente controlado.*/
+                divTocContenedor.title = '\u00CDndice';
+                divTocContenedor.className = 'mt-toggle-container indiceIntegracion';
+                console.log('Contenedor del indice creado:', divTocContenedor);
+                // Creo la lista de contenidos del indice
+                const tocLista = document.createElement('ol');
+                tocLista.className = 'mt-toc-content mt-collapsible-section numeracionOl';
+                divTocContenedor.appendChild(tocLista);
+                console.log('Lista superior del contenido del indice creada:', tocLista);
+
+                //Se quiso un Li, que esté siempre presente, al comienzo del índice, y que sea el que lleve al buscador por default del cms, a modo de rápido desplazamiento sin escrolear. Para aprovechar la funcionalidad, creo un h2 en la sección de este buscador, y lo oculto. Con esto el script encuentra el h2, y crea el li con su enlace.
+                const seccionBuscador = document.querySelector('nav.elm-header-user-nav.elm-nav');
+                if (seccionBuscador) {
+                    const h2Buscador = document.createElement('h2');
+                    h2Buscador.id = 'seccion-buscador';
+                    h2Buscador.textContent = 'Secci\u00F3n buscador';
+                    h2Buscador.style.cssText = 'position: absolute; left: -9999px;';
+                    seccionBuscador.parentNode.insertBefore(h2Buscador, seccionBuscador);
+                    //seccionBuscador llamé al nav que contiene al buscador, y con esto le digo que inserte el h2Buscador (que oculto), antes de la misma, de modo que el desplazamiento lo situe justo al comienzo del mismo.
+
+                    //Creo el toda la estructura del li
+                    const buscadorLi = document.createElement('li');
+                    buscadorLi.className = 'buscadorLi';
+                    buscadorLi.style.marginBottom = '20px';
+                    const buscadorLink = document.createElement('a');
+                    buscadorLink.rel = 'internal';
+                    buscadorLink.textContent = 'Secci\u00F3n buscador';
+                    buscadorLink.href = `#${h2Buscador.id}`;
+                    buscadorLi.appendChild(buscadorLink);
+                    tocLista.appendChild(buscadorLi);
+                    console.log("Sección buscador añadida al índice");
+                }
+                /* Tuve que optar por correrlo, pero no usar Display none, por lo siguiente:
+                **Por qué display: none; no funciona:
+                No ocupa espacio en el DOM: Los elementos con display: none; no ocupan espacio en el documento y, por lo tanto, no tienen coordenadas de desplazamiento.
+                No interactuable por scripts: No se pueden calcular las posiciones ni desplazarse hacia elementos que están completamente ocultos con display: none;.
+                **Por qué position: absolute; left: -9999px; es adecuado:
+                Mantiene la posición en el DOM: Aunque el elemento está fuera de la vista, sigue ocupando espacio y tiene coordenadas que pueden ser usadas para el desplazamiento.
+                Interactuable por scripts: Los elementos siguen estando disponibles para interacciones de scripts y pueden ser localizados en el documento.
+                
+                **La propiedad .cssText es parte de la interfaz CSSStyleDeclaration en JavaScript. Se utiliza para acceder o establecer todo el contenido del atributo style de un elemento como una cadena de texto. Esto puede ser útil para aplicar múltiples estilos de una vez, en lugar de establecer cada propiedad de estilo individualmente. El equivalente a esa linea sería:
+                h2Comentarios.style.position = 'absolute';
+                h2Comentarios.style.left = '-9999px';*/
+
+                /*La siguiente es la lógica que reemplazó a la del manejo de los h2 y h3 por separados (dado el error mencionado anteriormente). Recorro uno a uno, cada heading en 'todosLosEncabezados'. Esto devuelve un NodeList, un objeto NodeList es una colección de nodos (elementos HTML) que se obtiene al realizar ciertas consultas en el DOM mediante métodos como querySelectorAll() o como resultado de algunas propiedades del DOM, como childNodes. Características importantes de los NodeList:
+                -Colección Ordenada: Los nodos en un NodeList están ordenados según su posición en el DOM. Esto significa que si seleccionas elementos mediante querySelectorAll() o una propiedad como childNodes, el orden en el que aparecen en el NodeList será el mismo que en el DOM.
+                -Iterabilidad: Aunque no son arrays, los NodeList se pueden recorrer (iterar) de manera similar a los arrays. Puedes usar bucles for, forEach, o convertirlos a arrays utilizando Array.from() o el operador de propagación (...).
+                -Dinámicos: Los NodeList pueden ser dinámicos o estáticos. Un NodeList dinámico reflejará cambios en el DOM, lo que significa que si se agregan o eliminan nodos después de haber obtenido el NodeList, este se actualizará automáticamente para reflejar esos cambios. Por otro lado, un NodeList estático no se actualizará, por lo que contendrá los nodos que estaban presentes en el momento en que se creó.
+                -No Array: Aunque se pueden iterar y se comportan de manera similar a los arrays, los NodeList no son arrays. No tienen métodos de array  como push(), pop(), o map(), por lo que si necesitas usar esos métodos, debes convertir el NodeList en un array primero. (Como sucede en el archivo aparte de cambiarOrdenFiltros, que subiré próximamente)*/
+                todosLosEncabezados.forEach((element) => {
+                    if (element.tagName === 'H2') {
+
+                        currentH2 = {
+                            title: element.textContent.trim(),
+                            subtopics: []
+                        };
+                        index.push(currentH2);
+                        //Si el elemento en el recorrido sucede que es un h2, creo el li:
+                        tocLiH2 = document.createElement('li');
+                        //su enlace, para que al hacer click lo lleve a esa parte
+                        const tocLinkH2 = document.createElement('a');
+                        tocLinkH2.rel = 'internal';
+                        /* El atributo rel se utiliza para especificar la relación entre el documento actual y el recurso vinculado. 
+                        En este caso, 'internal' se está utilizando para indicar que el enlace apunta a una sección interna del mismo documento. 
+                    Esto puede ser útil para navegadores y otros programas que procesan el HTML para entender cómo se relacionan los distintos elementos del documento entre sí.*/
+                        tocLinkH2.textContent = element.textContent.trim();
+                        //Quito espacios en blanco
+                        tocLinkH2.href = `#${element.id}`;
+                        //Recapitulo: en este script, creo la url, se la asigno como id, a cada header, y con eso armo los href, de esta forma, concatenando el id (que es la url codificada) con el '#'. Y dejo cada elemento con su id, lo cual es una buena practica.
+                        tocLiH2.appendChild(tocLinkH2);
+                        // una vez formado el link (<a>), lo paso como hijo del <li>
+                        tocLista.appendChild(tocLiH2);
+                        // y añado ese li, a la Ol principal.
+
+                        //Luego de cada li principal (h2), creo una OL, y la inserto debajo del LI. Le agrego la clase 'collapsed' para que, por defecto, vengan esas ol colapsadas.
+                        listaHermanosH3 = document.createElement('ol');
+                        listaHermanosH3.classList.add('collapsed');  // De comentar esta linea, vendrían expandidas por defecto
+                        tocLiH2.appendChild(listaHermanosH3);
+                        //La inserto debajo del li
+
+                    } else if (element.tagName === 'H3' && currentH2) {
+                        currentH2.subtopics.push(element.textContent.trim());
+
+                        //Si todavía se está recorriendo el mismo h2 (currentH2), osea, antes de encontrar el siguiente h2, y encuentro un h3, creo su estructura LI:
+                        const tocLiH3 = document.createElement('li');
+                        const tocLinkH3 = document.createElement('a');
+                        tocLinkH3.rel = 'internal';
+                        tocLinkH3.textContent = element.textContent.trim();
+                        tocLinkH3.href = `#${element.id}`;
+                        tocLiH3.appendChild(tocLinkH3);
+                        //Lo añado al OL de este H2 que se está recorriendo
+                        listaHermanosH3.appendChild(tocLiH3);
+                        console.log(`Añadido H3 al índice: ${element.textContent.trim()}`);
+                    }
+
+                    console.log("El elemento " + element.id + " tiene " + listaHermanosH3.childElementCount + " hijos directos");
+                });
+
+                // Después de procesar todos los encabezados, inserto la flecha. Si fuera antes, se insertaría por cada elemento en el ciclo. Recorro todos los elementos <ol> que son hijos directos de un elemento <li>,dentro de lo que llamé tocLista.
+                tocLista.querySelectorAll('li > ol').forEach((olElement) => {
+                    if (olElement.childElementCount > 0) {
+                        /*verifica si el elemento <ol> (olElement) tiene al menos un hijo directo, y los hijos directors de los OL son los LI. De cumplirse esto, al Li de ese h2 (tocLiH2), se le crea y asigna, la estructura de la flecha, indicando el colapsable.*/
+                        const tocLiH2 = olElement.parentElement;
+                        const flechaH2 = document.createElement('img');
+                        flechaH2.classList.add('imgFlechaIndice');
+                        flechaH2.style.marginLeft = "10px";
+                        flechaH2.src = '/@api/deki/files/22/downArrowBlue.png.png';
+                        flechaH2.alt = 'Flecha';
+
+                        tocLiH2.insertBefore(flechaH2, olElement);
+                        console.log(`Flecha añadida para H2: ${tocLiH2.querySelector('a').textContent.trim()}`);
+
+                        // Agrego el evento de clic a la flecha de h2 para expandir/colapsar los h3
+                        flechaH2.addEventListener('click', function () {
+                            olElement.classList.toggle('collapsed');
+                            /* Los clicks alternan que esté o no la clase "collapsed".
+                        Y con el ternario determino que url de imagen se carga, dependiendo de que este o no la clase: */
+                            flechaH2.src = olElement.classList.contains('collapsed')
+                                ? '/@api/deki/files/22/downArrowBlue.png.png'
+                                : '/@api/deki/files/101/upArrowBlue.png';
+                            console.log(`Flecha cliqueada. Estado de la lista H3: ${olElement.classList.contains('collapsed') ? 'Colapsada' : 'Expandida'}`);
+                        });
+                    }
+                });
+
+                //Idem a sección buscador explicada arriba.
+                const seccionComentarios = document.querySelector('.elm-article-feedback');
+                if (seccionComentarios) {
+                    const h2Comentarios = document.createElement('h2');
+                    h2Comentarios.id = 'seccion-comentarios';
+                    h2Comentarios.textContent = 'Secci\u00F3n comentarios';
+                    h2Comentarios.style.cssText = 'position: absolute; left: -9999px;';
+                    seccionComentarios.parentNode.insertBefore(h2Comentarios, seccionComentarios);
+
+                    const comentariosLi = document.createElement('li');
+                    const comentariosLink = document.createElement('a');
+                    comentariosLink.rel = 'internal';
+                    comentariosLink.textContent = 'Dej\u00E1 tu comentario';
+                    comentariosLink.href = `#${h2Comentarios.id}`;
+                    comentariosLi.appendChild(comentariosLink);
+                    tocLista.appendChild(comentariosLi);
+                    console.log("Sección comentarios añadida al índice");
+                }
+
+                let ajusteDesplazamiento = 0;
+                //Con ajusteDesplazamiento regulo la altura a la que el desplazamiento suave deja los encabezados
+                //Offset, es un nombre que se le suele dar en ingles, pero puede recibir cualquier otro, por ejemplo: ajusteDesplazamiento
+
+                contenedorPrincipal.insertBefore(divTocContenedor, contenedorPrincipal.firstChild);
+                console.log('Contenedor del índice agregado al documento.');
+                // Con esto tengo toda la estructura creada, lo que sigue es la funcionalidad de desplazar la pagina hasta la ubicacion de la seccion a la que apunta cada link del indice
+
+                // Agrego el evento de clic para desplazar suavemente a los encabezados, lo explico abajo del mismo.
+                tocLista.addEventListener('click', function (event) {
+                    if (event.target.tagName === 'A') {
+                        event.preventDefault();
+                        const enlace = event.target;
+                        const idEncabezado = enlace.getAttribute('href').substring(1);
+                        const encabezadoDestino = document.getElementById(idEncabezado);
+                        if (encabezadoDestino) {
+                            // Desplazarse suavemente al encabezado correspondiente
+                            const posicionElemento = encabezadoDestino.getBoundingClientRect().top + window.pageYOffset;
+                            window.scrollTo({
+                                top: posicionElemento - ajusteDesplazamiento,
+                                behavior: 'smooth'
+                            });
+                            console.log(`Desplazamiento suave a: ${idEncabezado}`);
+                        }
+                    }
+                });
+
+                /*  Esta parte del código agrega un evento de clic al elemento tocLista, que es la OL mas externa del índice.
+                tocLista.addEventListener('click', function (event) { ... });: Este código agrega un "escuchador" de eventos al elemento tocLista que estará atento a los clics del usuario dentro de esta lista de contenido del índice. Cuando se detecta un clic, se ejecutará la función que viene después de la palabra clave function.
+                if (event.target.tagName === 'A') { ... }: Esta línea verifica si el elemento que desencadenó el evento de clic es una etiqueta <a>, es decir, si el usuario hizo clic en un enlace dentro de la lista de contenido del índice. event.target devuelve el elemento en el que se hizo clic durante el evento.
+                event.preventDefault();: Esta línea previene el comportamiento predeterminado del enlace, que es llevar al usuario a otra parte de la página o a otra página web.
+                Al llamar a preventDefault(), se evita que el enlace se active de manera estándar.
+                const enlace = event.target;: Aquí se guarda el enlace <a> en la variable enlace.
+                const idEncabezado = enlace.getAttribute('href').substring(1);: Esta línea obtiene el valor del atributo href del enlace y luego elimina el primer carácter ( que es el "#"") del valor obtenido.
+
+                ****************** IMPORTANTE!: ******************
+
+                Esto se hace para obtener el ID del encabezado al que el enlace se refiere.
+                const encabezadoDestino = document.getElementById(idEncabezado);: Con el ID del encabezado obtenido en el paso anterior, esta línea busca el elemento en el documento que tiene ese ID, es decir, el encabezado al que se hace referencia en el enlace.
+                const posicionElemento = encabezadoDestino.ajusteDesplazamientoTop;: Esta línea obtiene la posición vertical (en píxeles) del encabezado en relación con el elemento padre más cercano que tiene una posición diferente de static, es decir, el encabezado que se desea desplazar.
+                const desplazamiento = posicionElemento + 0;: Aquí se define la cantidad de desplazamiento que se aplicará a la página cuando se desplace hacia el encabezado.
+                En este caso, parece que no se aplica ningún desplazamiento adicional (se suma cero).
+                window.scrollTo({ top: desplazamiento, behavior: 'smooth' });: Finalmente, se utiliza window.scrollTo() para desplazar suavemente la página hasta la posición del encabezado, utilizando la opción behavior: 'smooth' para lograr un desplazamiento suave en lugar de instantáneo. La propiedad top se establece en la posición del encabezado donde se desea desplazar. */
+
+                // Por otra parte, se crea el botón de colapso de todo el índice, pero antes,y por lo explicado al comienzo del CSS, tambien creo un div que contenga a este boton (Para poder dejarlo fijo, y ocultar con su fondo, los LI que pasan al escrolear)
+                const divBotonIndice = document.createElement('div');
+                divBotonIndice.className = 'divBotonIndice';
+
+                const botonColapso = document.createElement('button');
+                botonColapso.className = 'mt-toggle mt-summary-toggle ui-button-icon mt-toggle-collapse';
+                botonColapso.type = 'button';
+                botonColapso.textContent = '\u00CDndice';
+
+                divBotonIndice.appendChild(botonColapso);
+                divTocContenedor.insertBefore(divBotonIndice, tocLista);
+
+                // Se agrega el evento de clic para colapsar/expandir el índice al botón de colapso
+                botonColapso.addEventListener('click', function () {
+                    divTocContenedor.classList.toggle('collapsed');
+                    tocLista.classList.toggle('collapsed');
+                    botonColapso.className = divTocContenedor.classList.contains('collapsed') ? 'mt-toggle mt-summary-toggle ui-button-icon mt-toggle-expand' : 'mt-toggle mt-summary-toggle ui-button-icon mt-toggle-collapse';
+                    console.log(`Botón de colapso clicado. Estado: ${divTocContenedor.classList.contains('collapsed') ? 'Expandido' : 'Colapsado'}`);
+                });
+
+                const estaEnUnIframe = window !== window.top;
+                /* window: Este objeto representa la ventana (o el marco) en el que se ejecuta el script. Cada pestaña del navegador, cada ventana emergente y cada iframe tiene su propio objeto window.
+                window.top: Este objeto representa la ventana más externa (la raíz) en la jerarquía de ventanas. Si la página actual está dentro de un iframe, window.top apuntará a la ventana que contiene ese iframe.
+                Comparación window !== window.top: Esta comparación verifica si la ventana actual (la página donde se ejecuta el script) es la misma que la ventana más externa. Y en el caso que sea desde la integracion, no será así, dado que, la info la carga en un iframe (el cual tendra su objeto window, y será diferente del objeto window.top, que será el marco padre donde se carga la app de la integracion)*/
+
+                if (!estaEnUnIframe) {
+                    document.querySelector('#indiceIntegracion').style.top = '150px';
+                    ajusteDesplazamiento = 120;
+                    console.log("Ajuste de desplazamiento establecido para iframe");
+                }
+            }
+        });
+    }
+
+    generarIndice();
+
+/* Codificación, a detalle:
+
+La función encodeSpecialCharacters toma un texto como entrada y reemplaza ciertos caracteres especiales (acentos) por sus correspondientes codificaciones URL. También reemplaza los espacios en blanco por guiones bajos (_).
+
+function encodeSpecialCharacters(text) {
+    return text.replace(/[áÁ]/g, '.C3.A1')
+        .replace(/[éÉ]/g, '.C3.A9')
+        .replace(/[íÍ]/g, '.C3.AD')
+        .replace(/[óÓ]/g, '.C3.B3')
+        .replace(/[úÚ]/g, '.C3.BA')
+        .replace(/\s+/g, '_');
+}
+Desglose del código:
+-function encodeSpecialCharacters(text) {
+Aquí defino una función llamada encodeSpecialCharacters que toma un parámetro text.
+-Reemplazo de caracteres:
+return text.replace(/[áÁ]/g, '.C3.A1')
+Utiliza el método replace del objeto String para buscar y reemplazar todos los caracteres á y Á (tanto en minúscula como en mayúscula) por la secuencia .C3.A1.
+La expresión regular /[áÁ]/g busca tanto á como Á. La g al final significa "global", es decir, que buscará todas las ocurrencias en el texto, no solo la primera.
+-Reemplazo de otros caracteres:
+De manera similar, se reemplazan los demás caracteres con acento:
+.replace(/[éÉ]/g, '.C3.A9')
+.replace(/[íÍ]/g, '.C3.AD')
+.replace(/[óÓ]/g, '.C3.B3')
+.replace(/[úÚ]/g, '.C3.BA')
+Cada línea sigue la misma estructura: busca los caracteres é, í, ó, ú (en ambas versiones, minúscula y mayúscula) y los reemplaza por sus respectivas secuencias codificadas en URL.
+-Reemplazo de espacios:
+.replace(/\s+/g, '_');
+Esta línea reemplaza uno o más espacios (\s+) por guiones bajos (_). La expresión \s+ significa "uno o más espacios en blanco".
+Ejemplo de uso
+Si llamo a la función con el siguiente texto:
+let resultado = encodeSpecialCharacters("áé íó ú");
+console.log(resultado);
+Obtendré:   .C3.A1.C3.A9_.C3.AD.C3.B3_.C3.BA
+En resumen, la función encodeSpecialCharacters es útil para preparar un texto que contiene caracteres especiales y espacios para ser utilizado en una URL o algún otro contexto donde estos caracteres necesitan ser codificados.
+
+
+Explicación de codificaciones, general, y en el cms:
+¿Por qué es necesaria la codificación de URLs?
+Las URLs (Uniform Resource Locators) tienen ciertas restricciones sobre qué caracteres pueden incluirse directamente. Algunos caracteres tienen significados especiales en una URL, como ?, &, y #. Para incluir estos caracteres en las URLs sin causar problemas, deben ser codificados.
+
+¿Qué es la codificación de URL?
+La codificación de URL (URL encoding) reemplaza caracteres no seguros con una secuencia de caracteres seguros. Este proceso implica convertir los caracteres a su representación hexadecimal precedida por un %.
+
+Estándares de Codificación
+La codificación de URL sigue el estándar establecido en el RFC 3986. Según este estándar, los caracteres seguros incluyen:
+
+Letras (A-Z, a-z)
+Números (0-9)
+Algunos caracteres especiales: -, _, ., ~
+Cualquier otro carácter debe ser codificado.
+
+Ejemplos de Codificación
+Espacio ( ) se convierte en %20 o +
+á se convierte en %C3%A1
+& se convierte en %26
+En el contexto del CMS, el CMS ha decidido usar una forma particular de codificación para ciertas letras acentuadas y caracteres especiales. Por ejemplo, en lugar de usar la representación hexadecimal común %C3%A1 para á, usa .C3.A1. Esta es una decisión de diseño tomada por los desarrolladores del CMS para mantener consistencia interna o por algún requisito técnico específico.
+
+¿Es arbitrario?
+En cierta medida, sí. La representación del cms (.C3.A1 en lugar de %C3%A1) es una convención que han decidido usar. Mientras que el RFC 3986 define cómo deben ser codificados los caracteres para ser seguros en una URL, cómo exactamente se implementa puede variar.
+
+Evaluación y Codificación
+La evaluación y codificación de caracteres se hace carácter por carácter. Cada carácter que no es seguro se convierte a su representación codificada. Hay librerías y funciones en muchos lenguajes de programación que manejan esta codificación automáticamente, siguiendo el estándar RFC 3986.
+
+Herramientas de Codificación
+En JavaScript, por ejemplo, puedes usar encodeURIComponent para codificar una URL de manera estándar:
+
+const text = "áéíóú ñ & ? /";
+// Result: %C3%A1%C3%A9%C3%AD%C3%B3%C3%BA%20%C3%B1%20%26%20%3F%20%2F
+const encodedText = encodeURIComponent(text);
+Sin embargo, en tu caso, debido a las convenciones específicas del cms, has creado una función personalizada encodeSpecialCharacters para manejar su estilo particular de codificación.
+
+Resumen
+Necesidad de codificación: Para que las URLs sean seguras y funcionen correctamente.
+Estándares: RFC 3986 define qué caracteres deben ser codificados.
+Decisiones del cms: La convención específica (.C3.A1) es una decisión de diseño que sigue sus propias reglas internas.
+Implementación: Evaluación y codificación carácter por carácter.
+En resumen, la codificación de URLs es esencial para mantener la integridad y funcionalidad de los enlaces. Aunque hay un estándar general, las implementaciones específicas pueden variar según los requisitos y decisiones de diseño de cada sistema, como en el caso de tu CMS.
+*/
+</script>
+
+</html>
