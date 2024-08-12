@@ -155,8 +155,17 @@ El mismo cuenta con una versión con el código limpio (index-generator-script),
             list-style: none !important;
         }
 
+        /*Oculta la línea final de las secciones, donde los permisos generan errores*/
+        .mt-section,
         .mt-section .mt-section {
             border-bottom: none !important;
+        }
+
+        /*Considero la línea inicial de las secciones, el área dónde estás los h2, dado que los permisos generan mal las secciones*/
+        .mt-content-container h2 {
+            border-top: 2px solid var(--primary-blue) !important;
+            padding-top: 0.5em !important;
+            margin-top: 0.5em !important;
         }
     </style>
 </head>
