@@ -51,7 +51,7 @@ El mismo cuenta con una versión con el código limpio (index-generator-script),
             min-width: 10em;
         }
 
-        .divBotonIndice button.mt-toggle {
+        #indiceIntegracion>div {
             z-index: 1000;
         }
 
@@ -281,8 +281,12 @@ El mismo cuenta con una versión con el código limpio (index-generator-script),
                         listaHermanosH3.classList.add('collapsed');  // De comentar esta linea, vendrían expandidas por defecto
                         tocLiH2.appendChild(listaHermanosH3);
 
-                    } else if (element.tagName === 'H3' && currentH2) {
-                        currentH2.subtopics.push(element.textContent.trim());
+                    } else if (element.tagName === 'H3') {
+                        if (!currentH2) {
+                            tocLiH2 = document.createElement('li');
+                            tocLista.appendChild(tocLiH2);
+                            listaHermanosH3 = tocLiH2;
+                        }
 
                         const tocLiH3 = document.createElement('li');
                         const tocLinkH3 = document.createElement('a');

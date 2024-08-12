@@ -70,8 +70,9 @@ El mismo cuenta con una versión con el código limpio (index-generator-script),
             /*Sin un minimo, la palabra 'indice' se iba debajo del '+' cuando esta colapsado*/
         }
 
-        .divBotonIndice button.mt-toggle {
+        #indiceIntegracion>div {
             z-index: 1000;
+            /*Para que cuando la lista sea larga, el botón del div quede sólido, por encima de los li que le pasan debajo*/
         }
 
         /* Reinicia la numeración en el segundo li. Dado que el primero quiero que no tenga numeración, por ser el que lleva al buscador integrado. */
@@ -363,8 +364,13 @@ El mismo cuenta con una versión con el código limpio (index-generator-script),
                         tocLiH2.appendChild(listaHermanosH3);
                         //La inserto debajo del li
 
-                    } else if (element.tagName === 'H3' && currentH2) {
-                        currentH2.subtopics.push(element.textContent.trim());
+                    } else if (element.tagName === 'H3') {
+                        if (!currentH2) {
+                            // Caso cuando no hay H2, pero hay H3
+                            tocLiH2 = document.createElement('li');
+                            tocLista.appendChild(tocLiH2);
+                            listaHermanosH3 = tocLiH2;  // Directamente en el li
+                        }
 
                         //Si todavía se está recorriendo el mismo h2 (currentH2), osea, antes de encontrar el siguiente h2, y encuentro un h3, creo su estructura LI:
                         const tocLiH3 = document.createElement('li');
@@ -507,85 +513,85 @@ El mismo cuenta con una versión con el código limpio (index-generator-script),
 
     generarIndice();
 
-/* Codificación, a detalle:
-
-La función encodeSpecialCharacters toma un texto como entrada y reemplaza ciertos caracteres especiales (acentos) por sus correspondientes codificaciones URL. También reemplaza los espacios en blanco por guiones bajos (_).
-
-function encodeSpecialCharacters(text) {
+    /* Codificación, a detalle:
+    
+    La función encodeSpecialCharacters toma un texto como entrada y reemplaza ciertos caracteres especiales (acentos) por sus correspondientes codificaciones URL. También reemplaza los espacios en blanco por guiones bajos (_).
+    
+    function encodeSpecialCharacters(text) {
+        return text.replace(/[áÁ]/g, '.C3.A1')
+            .replace(/[éÉ]/g, '.C3.A9')
+            .replace(/[íÍ]/g, '.C3.AD')
+            .replace(/[óÓ]/g, '.C3.B3')
+            .replace(/[úÚ]/g, '.C3.BA')
+            .replace(/\s+/g, '_');
+    }
+    Desglose del código:
+    -function encodeSpecialCharacters(text) {
+    Aquí defino una función llamada encodeSpecialCharacters que toma un parámetro text.
+    -Reemplazo de caracteres:
     return text.replace(/[áÁ]/g, '.C3.A1')
-        .replace(/[éÉ]/g, '.C3.A9')
-        .replace(/[íÍ]/g, '.C3.AD')
-        .replace(/[óÓ]/g, '.C3.B3')
-        .replace(/[úÚ]/g, '.C3.BA')
-        .replace(/\s+/g, '_');
-}
-Desglose del código:
--function encodeSpecialCharacters(text) {
-Aquí defino una función llamada encodeSpecialCharacters que toma un parámetro text.
--Reemplazo de caracteres:
-return text.replace(/[áÁ]/g, '.C3.A1')
-Utiliza el método replace del objeto String para buscar y reemplazar todos los caracteres á y Á (tanto en minúscula como en mayúscula) por la secuencia .C3.A1.
-La expresión regular /[áÁ]/g busca tanto á como Á. La g al final significa "global", es decir, que buscará todas las ocurrencias en el texto, no solo la primera.
--Reemplazo de otros caracteres:
-De manera similar, se reemplazan los demás caracteres con acento:
-.replace(/[éÉ]/g, '.C3.A9')
-.replace(/[íÍ]/g, '.C3.AD')
-.replace(/[óÓ]/g, '.C3.B3')
-.replace(/[úÚ]/g, '.C3.BA')
-Cada línea sigue la misma estructura: busca los caracteres é, í, ó, ú (en ambas versiones, minúscula y mayúscula) y los reemplaza por sus respectivas secuencias codificadas en URL.
--Reemplazo de espacios:
-.replace(/\s+/g, '_');
-Esta línea reemplaza uno o más espacios (\s+) por guiones bajos (_). La expresión \s+ significa "uno o más espacios en blanco".
-Ejemplo de uso
-Si llamo a la función con el siguiente texto:
-let resultado = encodeSpecialCharacters("áé íó ú");
-console.log(resultado);
-Obtendré:   .C3.A1.C3.A9_.C3.AD.C3.B3_.C3.BA
-En resumen, la función encodeSpecialCharacters es útil para preparar un texto que contiene caracteres especiales y espacios para ser utilizado en una URL o algún otro contexto donde estos caracteres necesitan ser codificados.
-
-
-Explicación de codificaciones, general, y en el cms:
-¿Por qué es necesaria la codificación de URLs?
-Las URLs (Uniform Resource Locators) tienen ciertas restricciones sobre qué caracteres pueden incluirse directamente. Algunos caracteres tienen significados especiales en una URL, como ?, &, y #. Para incluir estos caracteres en las URLs sin causar problemas, deben ser codificados.
-
-¿Qué es la codificación de URL?
-La codificación de URL (URL encoding) reemplaza caracteres no seguros con una secuencia de caracteres seguros. Este proceso implica convertir los caracteres a su representación hexadecimal precedida por un %.
-
-Estándares de Codificación
-La codificación de URL sigue el estándar establecido en el RFC 3986. Según este estándar, los caracteres seguros incluyen:
-
-Letras (A-Z, a-z)
-Números (0-9)
-Algunos caracteres especiales: -, _, ., ~
-Cualquier otro carácter debe ser codificado.
-
-Ejemplos de Codificación
-Espacio ( ) se convierte en %20 o +
-á se convierte en %C3%A1
-& se convierte en %26
-En el contexto del CMS, el CMS ha decidido usar una forma particular de codificación para ciertas letras acentuadas y caracteres especiales. Por ejemplo, en lugar de usar la representación hexadecimal común %C3%A1 para á, usa .C3.A1. Esta es una decisión de diseño tomada por los desarrolladores del CMS para mantener consistencia interna o por algún requisito técnico específico.
-
-¿Es arbitrario?
-En cierta medida, sí. La representación del cms (.C3.A1 en lugar de %C3%A1) es una convención que han decidido usar. Mientras que el RFC 3986 define cómo deben ser codificados los caracteres para ser seguros en una URL, cómo exactamente se implementa puede variar.
-
-Evaluación y Codificación
-La evaluación y codificación de caracteres se hace carácter por carácter. Cada carácter que no es seguro se convierte a su representación codificada. Hay librerías y funciones en muchos lenguajes de programación que manejan esta codificación automáticamente, siguiendo el estándar RFC 3986.
-
-Herramientas de Codificación
-En JavaScript, por ejemplo, puedes usar encodeURIComponent para codificar una URL de manera estándar:
-
-const text = "áéíóú ñ & ? /";
-// Result: %C3%A1%C3%A9%C3%AD%C3%B3%C3%BA%20%C3%B1%20%26%20%3F%20%2F
-const encodedText = encodeURIComponent(text);
-Sin embargo, en tu caso, debido a las convenciones específicas del cms, has creado una función personalizada encodeSpecialCharacters para manejar su estilo particular de codificación.
-
-Resumen
-Necesidad de codificación: Para que las URLs sean seguras y funcionen correctamente.
-Estándares: RFC 3986 define qué caracteres deben ser codificados.
-Decisiones del cms: La convención específica (.C3.A1) es una decisión de diseño que sigue sus propias reglas internas.
-Implementación: Evaluación y codificación carácter por carácter.
-En resumen, la codificación de URLs es esencial para mantener la integridad y funcionalidad de los enlaces. Aunque hay un estándar general, las implementaciones específicas pueden variar según los requisitos y decisiones de diseño de cada sistema, como en el caso de tu CMS.
-*/
+    Utiliza el método replace del objeto String para buscar y reemplazar todos los caracteres á y Á (tanto en minúscula como en mayúscula) por la secuencia .C3.A1.
+    La expresión regular /[áÁ]/g busca tanto á como Á. La g al final significa "global", es decir, que buscará todas las ocurrencias en el texto, no solo la primera.
+    -Reemplazo de otros caracteres:
+    De manera similar, se reemplazan los demás caracteres con acento:
+    .replace(/[éÉ]/g, '.C3.A9')
+    .replace(/[íÍ]/g, '.C3.AD')
+    .replace(/[óÓ]/g, '.C3.B3')
+    .replace(/[úÚ]/g, '.C3.BA')
+    Cada línea sigue la misma estructura: busca los caracteres é, í, ó, ú (en ambas versiones, minúscula y mayúscula) y los reemplaza por sus respectivas secuencias codificadas en URL.
+    -Reemplazo de espacios:
+    .replace(/\s+/g, '_');
+    Esta línea reemplaza uno o más espacios (\s+) por guiones bajos (_). La expresión \s+ significa "uno o más espacios en blanco".
+    Ejemplo de uso
+    Si llamo a la función con el siguiente texto:
+    let resultado = encodeSpecialCharacters("áé íó ú");
+    console.log(resultado);
+    Obtendré:   .C3.A1.C3.A9_.C3.AD.C3.B3_.C3.BA
+    En resumen, la función encodeSpecialCharacters es útil para preparar un texto que contiene caracteres especiales y espacios para ser utilizado en una URL o algún otro contexto donde estos caracteres necesitan ser codificados.
+    
+    
+    Explicación de codificaciones, general, y en el cms:
+    ¿Por qué es necesaria la codificación de URLs?
+    Las URLs (Uniform Resource Locators) tienen ciertas restricciones sobre qué caracteres pueden incluirse directamente. Algunos caracteres tienen significados especiales en una URL, como ?, &, y #. Para incluir estos caracteres en las URLs sin causar problemas, deben ser codificados.
+    
+    ¿Qué es la codificación de URL?
+    La codificación de URL (URL encoding) reemplaza caracteres no seguros con una secuencia de caracteres seguros. Este proceso implica convertir los caracteres a su representación hexadecimal precedida por un %.
+    
+    Estándares de Codificación
+    La codificación de URL sigue el estándar establecido en el RFC 3986. Según este estándar, los caracteres seguros incluyen:
+    
+    Letras (A-Z, a-z)
+    Números (0-9)
+    Algunos caracteres especiales: -, _, ., ~
+    Cualquier otro carácter debe ser codificado.
+    
+    Ejemplos de Codificación
+    Espacio ( ) se convierte en %20 o +
+    á se convierte en %C3%A1
+    & se convierte en %26
+    En el contexto del CMS, el CMS ha decidido usar una forma particular de codificación para ciertas letras acentuadas y caracteres especiales. Por ejemplo, en lugar de usar la representación hexadecimal común %C3%A1 para á, usa .C3.A1. Esta es una decisión de diseño tomada por los desarrolladores del CMS para mantener consistencia interna o por algún requisito técnico específico.
+    
+    ¿Es arbitrario?
+    En cierta medida, sí. La representación del cms (.C3.A1 en lugar de %C3%A1) es una convención que han decidido usar. Mientras que el RFC 3986 define cómo deben ser codificados los caracteres para ser seguros en una URL, cómo exactamente se implementa puede variar.
+    
+    Evaluación y Codificación
+    La evaluación y codificación de caracteres se hace carácter por carácter. Cada carácter que no es seguro se convierte a su representación codificada. Hay librerías y funciones en muchos lenguajes de programación que manejan esta codificación automáticamente, siguiendo el estándar RFC 3986.
+    
+    Herramientas de Codificación
+    En JavaScript, por ejemplo, puedes usar encodeURIComponent para codificar una URL de manera estándar:
+    
+    const text = "áéíóú ñ & ? /";
+    // Result: %C3%A1%C3%A9%C3%AD%C3%B3%C3%BA%20%C3%B1%20%26%20%3F%20%2F
+    const encodedText = encodeURIComponent(text);
+    Sin embargo, en tu caso, debido a las convenciones específicas del cms, has creado una función personalizada encodeSpecialCharacters para manejar su estilo particular de codificación.
+    
+    Resumen
+    Necesidad de codificación: Para que las URLs sean seguras y funcionen correctamente.
+    Estándares: RFC 3986 define qué caracteres deben ser codificados.
+    Decisiones del cms: La convención específica (.C3.A1) es una decisión de diseño que sigue sus propias reglas internas.
+    Implementación: Evaluación y codificación carácter por carácter.
+    En resumen, la codificación de URLs es esencial para mantener la integridad y funcionalidad de los enlaces. Aunque hay un estándar general, las implementaciones específicas pueden variar según los requisitos y decisiones de diseño de cada sistema, como en el caso de tu CMS.
+    */
 </script>
 
 </html>
