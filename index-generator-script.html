@@ -289,23 +289,27 @@ El mismo cuenta con una versión con el código limpio (index-generator-script),
                         tocLiH2.appendChild(listaHermanosH3);
 
                     } else if (element.tagName === 'H3') {
+
                         if (!currentH2) {
-                            tocLiH2 = document.createElement('li');
-                            tocLista.appendChild(tocLiH2);
-                            listaHermanosH3 = tocLiH2;
+                            const tocLiH3 = document.createElement('li');
+                            const tocLinkH3 = document.createElement('a');
+                            tocLinkH3.rel = 'internal';
+                            tocLinkH3.textContent = element.textContent.trim();
+                            tocLinkH3.href = `#${element.id}`;
+                            tocLiH3.appendChild(tocLinkH3);
+                            tocLista.appendChild(tocLiH3); 
+                        } else {
+                            const tocLiH3 = document.createElement('li');
+                            const tocLinkH3 = document.createElement('a');
+                            tocLinkH3.rel = 'internal';
+                            tocLinkH3.textContent = element.textContent.trim();
+                            tocLinkH3.href = `#${element.id}`;
+                            tocLiH3.appendChild(tocLinkH3);
+                            listaHermanosH3.appendChild(tocLiH3);
+                            //console.log(`Añadido H3 al índice: ${element.textContent.trim()}`);
                         }
-
-                        const tocLiH3 = document.createElement('li');
-                        const tocLinkH3 = document.createElement('a');
-                        tocLinkH3.rel = 'internal';
-                        tocLinkH3.textContent = element.textContent.trim();
-                        tocLinkH3.href = `#${element.id}`;
-                        tocLiH3.appendChild(tocLinkH3);
-                        listaHermanosH3.appendChild(tocLiH3);
-                        //console.log(`Añadido H3 al índice: ${element.textContent.trim()}`);
                     }
-
-                    //console.log("El elemento " + element.id + " tiene " + listaHermanosH3.childElementCount + " hijos directos");
+                    //console.log("El elemento " + element.id + " tiene " + listaHermanosH3.childElementCount + "hijos directos");
                 });
 
                 tocLista.querySelectorAll('li > ol').forEach((olElement) => {

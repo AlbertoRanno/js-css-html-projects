@@ -374,26 +374,43 @@ El mismo cuenta con una versión con el código limpio (index-generator-script),
                         //La inserto debajo del li
 
                     } else if (element.tagName === 'H3') {
-                        if (!currentH2) {
-                            // Caso cuando no hay H2, pero hay H3
-                            tocLiH2 = document.createElement('li');
-                            tocLista.appendChild(tocLiH2);
-                            listaHermanosH3 = tocLiH2;  // Directamente en el li
-                        }
 
-                        //Si todavía se está recorriendo el mismo h2 (currentH2), osea, antes de encontrar el siguiente h2, y encuentro un h3, creo su estructura LI:
-                        const tocLiH3 = document.createElement('li');
-                        const tocLinkH3 = document.createElement('a');
-                        tocLinkH3.rel = 'internal';
-                        tocLinkH3.textContent = element.textContent.trim();
-                        tocLinkH3.href = `#${element.id}`;
-                        tocLiH3.appendChild(tocLinkH3);
-                        //Lo añado al OL de este H2 que se está recorriendo
-                        listaHermanosH3.appendChild(tocLiH3);
-                        console.log(`Añadido H3 al índice: ${element.textContent.trim()}`);
+                        if (!currentH2) {
+                            // En lugar de crear un <li> anidado, creo un <li> simple para el <h3>
+                            const tocLiH3 = document.createElement('li');
+                            const tocLinkH3 = document.createElement('a');
+                            tocLinkH3.rel = 'internal';
+                            tocLinkH3.textContent = element.textContent.trim();
+                            tocLinkH3.href = `#${element.id}`;
+                            tocLiH3.appendChild(tocLinkH3);
+                            tocLista.appendChild(tocLiH3);  // Lo añado directamente a la lista principal
+                            /* Condición if (!currentH2): Si no hay un <h2> previo, el código crea un <li> simple para el <h3> y lo añade directamente a la lista principal (tocLista),
+                            en lugar de crear una estructura anidada con otro <li>. Previo a esto, tenía este código:
+                            
+                            if (!currentH2) {
+                                                    // Caso cuando no hay H2, pero hay H3
+                                                    tocLiH2 = document.createElement('li');
+                                                    tocLista.appendChild(tocLiH2);
+                                                    listaHermanosH3 = tocLiH2;  // Directamente en el li
+                                                }
+                            
+                            Y con el mismo armaba: <li><li><a>....</a></li></li>
+                            Lo que quedaba mal, por el hecho de que los numeradores internos se veían mal   */
+                        } else {
+                            //Si hay un <h2> previo, el <h3> se sigue agregando dentro de la lista listaHermanosH3 como antes, preservando la jerarquía correcta.
+                            //Si todavía se está recorriendo el mismo h2 (currentH2), osea, antes de encontrar el siguiente h2, y encuentro un h3, creo su estructura LI:
+                            const tocLiH3 = document.createElement('li');
+                            const tocLinkH3 = document.createElement('a');
+                            tocLinkH3.rel = 'internal';
+                            tocLinkH3.textContent = element.textContent.trim();
+                            tocLinkH3.href = `#${element.id}`;
+                            tocLiH3.appendChild(tocLinkH3); //Lo añado al OL de este H2 que se está recorriendo
+                            listaHermanosH3.appendChild(tocLiH3);
+                            //console.log(`Añadido H3 al índice: ${element.textContent.trim()}`);
+                        }
                     }
 
-                    console.log("El elemento " + element.id + " tiene " + listaHermanosH3.childElementCount + " hijos directos");
+                    //console.log("El elemento " + element.id + " tiene " + listaHermanosH3.childElementCount + "hijos directos");
                 });
 
                 // Después de procesar todos los encabezados, inserto la flecha. Si fuera antes, se insertaría por cada elemento en el ciclo. Recorro todos los elementos <ol> que son hijos directos de un elemento <li>,dentro de lo que llamé tocLista.
